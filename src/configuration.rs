@@ -52,7 +52,9 @@ impl Configuration {
 
         let slippage_tolerance_bps =
             match collect_optional_environment_variable("SLIPPAGE_TOLERANCE_BPS")? {
-                Some(block_num) => block_num.parse::<u16>().expect("Unable to parse slippage tolerance factor"),
+                Some(block_num) => block_num
+                    .parse::<u16>()
+                    .expect("Unable to parse slippage tolerance factor"),
                 None => 50,
             };
 
@@ -64,7 +66,7 @@ impl Configuration {
             starting_block_number,
             polling_frequency_secs,
             node_base_url,
-            slippage_tolerance_bps
+            slippage_tolerance_bps,
         })
     }
 }

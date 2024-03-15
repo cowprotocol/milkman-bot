@@ -6,18 +6,23 @@ use tokio::time::sleep;
 use tracing::Instrument;
 
 mod configuration;
+
 use crate::configuration::Configuration;
 
 mod ethereum_client;
+
 use crate::ethereum_client::EthereumClient;
 
 mod cow_api_client;
+
 use crate::cow_api_client::{CowAPIClient, Order};
 
 mod encoder;
+
 use crate::encoder::SignatureData;
 
 mod types;
+
 use crate::types::Swap;
 
 mod constants;
@@ -200,7 +205,7 @@ async fn handle_swap(
             sell_amount: sell_amount_after_fees,
             buy_amount: buy_amount_after_fees_and_slippage,
             valid_to: quote.valid_to,
-            fee_amount:  U256::zero(),
+            fee_amount: U256::zero(),
             receiver: requested_swap.receiver,
             eip_1271_signature: &eip_1271_signature,
             quote_id: quote.id,
