@@ -67,8 +67,15 @@ impl EthereumClient {
     }
 
     #[cfg(test)]
-    pub async fn get_chain_timestamp(&self) -> Result<u64> {
-        Ok(self.get_latest_block().await?.timestamp.as_u64())
+    pub async fn get_chain_id(&self) -> Result<u64> {
+        Ok(self.inner_client.get_chainid().await?.as_u64())
+    }
+
+    #[cfg(test)]
+    pub async fn impersonate(&self, address: &H160) -> Result<(), ProviderError> {
+        self.inner_client
+            .request("anvil_impersonateAccount", [address])
+            .await
     }
 
     async fn get_latest_block(&self) -> Result<Block<H256>> {
@@ -192,56 +199,105 @@ mod tests {
     #[tokio::test]
     async fn test_ethereum_client() {
         let config = Configuration {
-            infura_api_key: Some("e74132f416d346308763252779d7df22".to_string()),
-            network: "goerli".to_string(),
-            milkman_address: "0x5D9C7CBeF995ef16416D963EaCEEC8FcA2590731"
+            infura_api_key: None,
+            network: "mainnet".to_string(),
+            milkman_address: "0x11C76AD590ABDFFCD980afEC9ad951B160F02797"
                 .parse()
                 .unwrap(),
-            hash_helper_address: "0x429A101f42781C53c088392956c95F0A32437b8C"
+            hash_helper_address: "0x49Fc95c908902Cf48f5F26ed5ADE284de3b55197"
                 .parse()
                 .unwrap(),
             starting_block_number: None,
             polling_frequency_secs: 15,
-            node_base_url: None,
+            node_base_url: Some("http://127.0.0.1:8545".into()),
             slippage_tolerance_bps: 50,
         };
 
         let eth_client = EthereumClient::new(&config).expect("Unable to create Ethereum client");
 
+        let milkman = Milkman::new(config.milkman_address, Arc::clone(&eth_client.inner_client));
+
         let latest_block_num = eth_client
             .get_latest_block_number()
             .await
             .expect("Unable to get latest block number");
-
-        assert!(latest_block_num > 7994445);
-
-        let chain_timestamp = eth_client
-            .get_chain_timestamp()
+        let first_block_in_fork = latest_block_num + 1;
+        let chain_id = eth_client
+            .get_chain_id()
             .await
-            .expect("Unable to get chain timestamp");
+            .expect("Unable to get chain id");
+        assert_eq!(chain_id, 1, "Test must be run on mainnet");
+        assert_eq!(
+            latest_block_num, 20920411,
+            "Test is designed for a specific mainnet block"
+        );
 
-        assert!(chain_timestamp > 1669053987);
-
-        let goerli_uni_addr = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+        let weth = token("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", &eth_client);
+        let dai = token("0x6B175474E89094C44Da98b954EedeAC495271d0F", &eth_client);
+        // Any EOA that has a large amount of WETH at the fork block
+        let weth_whale: H160 = "0x8eb8a3b98659cce290402893d0123abb75e3ab28"
             .parse()
             .unwrap();
-        let goerli_uni_whale = "0x41653c7d61609D856f29355E404F310Ec4142Cfb"
-            .parse()
-            .unwrap();
 
-        let balance = eth_client
-            .get_balance_of(goerli_uni_addr, goerli_uni_whale)
+        eth_client.impersonate(&weth_whale).await.expect(
+            "Node should be able to impersonate accounts. Is the node compatible with Anvil?",
+        );
+
+        assert!(swaps_since(first_block_in_fork, &eth_client)
             .await
-            .expect("Unable to get balance");
+            .is_empty());
 
-        assert!(balance > 0.into());
-
-        let requested_swaps = eth_client
-            .get_requested_swaps(0, latest_block_num)
+        weth.approve(milkman.address(), U256::max_value())
+            .from(weth_whale)
+            .send()
             .await
-            .expect("Unable to get requested swaps");
+            .expect("Must be able to approve token");
 
-        assert!(!requested_swaps.is_empty());
+        let amount_in = u256_from_f64_saturating(1e18);
+        let receiver = H160([0x42; 20]);
+        let price_checker = H160([0x11; 20]);
+        let price_checker_data = Bytes::from([0x13, 0x37]);
+        milkman
+            .request_swap_exact_tokens_for_tokens(
+                amount_in,
+                weth.address(),
+                dai.address(),
+                receiver,
+                price_checker,
+                price_checker_data.clone(),
+            )
+            .from(weth_whale)
+            .send()
+            .await
+            .expect("Swap request must succeed");
+
+        let mut swaps = swaps_since(first_block_in_fork, &eth_client).await;
+        assert_eq!(swaps.len(), 1);
+
+        let swap = swaps.pop().unwrap();
+        assert_eq!(swap.amount_in, amount_in);
+        assert_eq!(swap.from_token, weth.address());
+        assert_eq!(swap.to_token, dai.address());
+        assert_eq!(swap.receiver, receiver);
+        assert_eq!(swap.price_checker, price_checker);
+        assert_eq!(swap.price_checker_data, price_checker_data);
+        assert_eq!(swap.order_creator, weth_whale);
+    }
+
+    fn token(address: &str, eth_client: &EthereumClient) -> ERC20 {
+        let address: H160 = address.parse().expect("Not a valid address");
+        ERC20::new(address, Arc::clone(&eth_client.inner_client))
+    }
+
+    async fn swaps_since(block_nr: u64, eth_client: &EthereumClient) -> Vec<Swap> {
+        let latest_block_num = eth_client
+            .get_latest_block_number()
+            .await
+            .expect("Unable to get latest block number");
+        eth_client
+            .get_requested_swaps(block_nr, latest_block_num)
+            .await
+            .expect("Unable to get requested swaps")
     }
 
     #[test]

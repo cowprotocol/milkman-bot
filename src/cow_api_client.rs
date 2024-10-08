@@ -31,14 +31,12 @@ pub struct Order<'a> {
 
 pub struct CowAPIClient {
     pub base_url: String,
-    pub milkman_address: String,
 }
 
 impl CowAPIClient {
     pub fn new(config: &Configuration) -> Self {
         Self {
             base_url: format!("https://api.cow.fi/{}/api/v1/", config.network),
-            milkman_address: config.milkman_address.to_string(),
         }
     }
 
