@@ -9,7 +9,8 @@ use crate::constants::APP_DATA;
 
 #[derive(Debug)]
 pub struct Quote {
-    pub fee_amount: U256,
+    // TODO: determine if this entry is still needed
+    #[allow(dead_code)] pub fee_amount: U256,
     pub buy_amount_after_fee: U256,
     pub valid_to: u64,
     pub id: u64,
