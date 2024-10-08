@@ -78,6 +78,11 @@ impl EthereumClient {
             .await
     }
 
+    #[cfg(test)]
+    pub async fn mine_empty_block(&self) -> Result<(), ProviderError> {
+        self.inner_client.request("anvil_mine", [1]).await
+    }
+
     async fn get_latest_block(&self) -> Result<Block<H256>> {
         self.inner_client
             .get_block(ethers::core::types::BlockNumber::Latest)
@@ -270,6 +275,14 @@ mod tests {
             .send()
             .await
             .expect("Swap request must succeed");
+
+        // Without mining an empty block, the test is flaky.
+        // Sometimes, the swap events are not registered and it looks like there
+        // were no swaps.
+        eth_client
+            .mine_empty_block()
+            .await
+            .expect("Must mine empty block");
 
         let mut swaps = swaps_since(first_block_in_fork, &eth_client).await;
         assert_eq!(swaps.len(), 1);
