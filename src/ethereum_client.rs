@@ -258,7 +258,7 @@ mod tests {
             .await
             .expect("Must be able to approve token");
 
-        let amount_in = u256_from_f64_saturating(1e18);
+        let amount_in = U256::exp10(18);
         let receiver = H160([0x42; 20]);
         let price_checker = H160([0x11; 20]);
         let price_checker_data = Bytes::from([0x13, 0x37]);
