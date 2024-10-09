@@ -170,6 +170,7 @@ async fn handle_swap(
             requested_swap.to_token,
             requested_swap.amount_in,
             verification_gas_limit.as_u64(),
+            requested_swap.app_data,
         )
         .await
     {
@@ -192,6 +193,7 @@ async fn handle_swap(
         valid_to: quote.valid_to,
         fee_amount: U256::zero(),
         order_creator: requested_swap.order_creator,
+        app_data: requested_swap.app_data,
         price_checker: requested_swap.price_checker,
         price_checker_data: &requested_swap.price_checker_data,
     });

@@ -2,15 +2,15 @@ use crate::configuration::Configuration;
 use anyhow::{anyhow, Context, Result};
 use ethers::abi::Address;
 use ethers::types::{Bytes, U256};
+use ethers::utils::hex;
 use log::{debug, info};
 use serde_json::Value;
-
-use crate::constants::APP_DATA;
 
 #[derive(Debug)]
 pub struct Quote {
     // TODO: determine if this entry is still needed
-    #[allow(dead_code)] pub fee_amount: U256,
+    #[allow(dead_code)]
+    pub fee_amount: U256,
     pub buy_amount_after_fee: U256,
     pub valid_to: u64,
     pub id: u64,
@@ -48,6 +48,7 @@ impl CowAPIClient {
         buy_token: Address,
         sell_amount_before_fee: U256,
         verification_gas_limit: u64,
+        app_data: [u8; 32],
     ) -> Result<Quote> {
         let http_client = reqwest::Client::new();
 
@@ -57,7 +58,7 @@ impl CowAPIClient {
                 "sellToken": sell_token,
                 "buyToken": buy_token,
                 "sellAmountBeforeFee": sell_amount_before_fee.to_string(),
-                "appData": "0x".to_string() + APP_DATA,
+                "appData": "0x".to_string() + &hex::encode(app_data),
                 "kind": "sell",
                 "partiallyFillable": false,
                 "from": order_contract,

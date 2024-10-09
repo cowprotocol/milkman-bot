@@ -9,6 +9,7 @@ pub struct Swap {
     pub from_token: Address,
     pub to_token: Address,
     pub amount_in: U256,
+    pub app_data: [u8; 32],
     pub price_checker: Address,
     pub price_checker_data: Bytes,
 }
