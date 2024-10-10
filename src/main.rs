@@ -209,6 +209,7 @@ async fn handle_swap(
             valid_to: quote.valid_to,
             fee_amount: U256::zero(),
             receiver: requested_swap.receiver,
+            app_data: requested_swap.app_data,
             eip_1271_signature: &eip_1271_signature,
             quote_id: quote.id,
         })

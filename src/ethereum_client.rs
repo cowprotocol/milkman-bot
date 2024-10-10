@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use ethers::prelude::*;
 use hex::FromHex;
-use log::debug;
 #[cfg(test)]
 use rand::prelude::*;
 use std::convert::{From, Into};
@@ -163,18 +162,23 @@ impl EthereumClient {
             price_checker_data: &swap_request.price_checker_data,
         });
 
-        debug!(
-            "isValidSignature({:?},{:?})",
-            hex::encode(mock_order_digest),
-            hex::encode(&mock_signature.0)
-        );
-        debug!(
-            "Is valid sig? {:?}",
-            order_contract
+        #[cfg(debug_assertions)]
+        {
+            println!(
+                "isValidSignature({:?},{:?})",
+                hex::encode(mock_order_digest),
+                hex::encode(&mock_signature.0)
+            );
+            let is_valid_signature_output = order_contract
                 .is_valid_signature(mock_order_digest, mock_signature.clone())
                 .call()
-                .await?
-        );
+                .await?;
+            let eip1271_magic_value = [22, 38, 186, 126];
+            println!(
+                "Is valid sig? {:?}",
+                is_valid_signature_output == eip1271_magic_value
+            );
+        }
 
         Ok(order_contract
             .is_valid_signature(mock_order_digest, mock_signature)
