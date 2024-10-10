@@ -39,7 +39,7 @@ pass in 'goerli'.
 ### MILKMAN_ADDRESS
 
 *Default:*
-0x11C76AD590ABDFFCD980afEC9ad951B160F02797
+0x060373D064d0168931dE2AB8DDA7410923d06E88
 
 *Description:*
 Address of the core milkman contract that the bot watches.
