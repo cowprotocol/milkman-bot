@@ -2,15 +2,15 @@ use crate::configuration::Configuration;
 use anyhow::{anyhow, Context, Result};
 use ethers::abi::Address;
 use ethers::types::{Bytes, U256};
+use ethers::utils::hex;
 use log::{debug, info};
 use serde_json::Value;
-
-use crate::constants::APP_DATA;
 
 #[derive(Debug)]
 pub struct Quote {
     // TODO: determine if this entry is still needed
-    #[allow(dead_code)] pub fee_amount: U256,
+    #[allow(dead_code)]
+    pub fee_amount: U256,
     pub buy_amount_after_fee: U256,
     pub valid_to: u64,
     pub id: u64,
@@ -26,6 +26,7 @@ pub struct Order<'a> {
     pub valid_to: u64,
     pub fee_amount: U256,
     pub receiver: Address,
+    pub app_data: [u8; 32],
     pub eip_1271_signature: &'a Bytes,
     pub quote_id: u64,
 }
@@ -48,6 +49,7 @@ impl CowAPIClient {
         buy_token: Address,
         sell_amount_before_fee: U256,
         verification_gas_limit: u64,
+        app_data: [u8; 32],
     ) -> Result<Quote> {
         let http_client = reqwest::Client::new();
 
@@ -57,7 +59,7 @@ impl CowAPIClient {
                 "sellToken": sell_token,
                 "buyToken": buy_token,
                 "sellAmountBeforeFee": sell_amount_before_fee.to_string(),
-                "appData": "0x".to_string() + APP_DATA,
+                "appData": "0x".to_string() + &hex::encode(app_data),
                 "kind": "sell",
                 "partiallyFillable": false,
                 "from": order_contract,
@@ -119,6 +121,7 @@ impl CowAPIClient {
             valid_to,
             fee_amount,
             receiver,
+            app_data,
             eip_1271_signature,
             quote_id,
         }: Order<'_>,
@@ -132,7 +135,7 @@ impl CowAPIClient {
                 "sellAmount": sell_amount.to_string(),
                 "buyAmount": buy_amount.to_string(),
                 "validTo": valid_to,
-                "appData": "0x2B8694ED30082129598720860E8E972F07AA10D9B81CAE16CA0E2CFB24743E24",
+                "appData": "0x".to_string() + &hex::encode(app_data),
                 "feeAmount": fee_amount.to_string(),
                 "kind": "sell",
                 "partiallyFillable": false,

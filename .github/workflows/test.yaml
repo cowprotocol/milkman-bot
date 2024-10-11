@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1
       - uses: foundry-rs/foundry-toolchain@v1
-      - run: anvil --fork-url 'https://eth.merkle.io' --fork-block-number 20920411 &
+      - run: anvil --fork-url 'https://eth.merkle.io' --fork-block-number 20927150 &
       - run: cargo clippy
       # node should be up before running tests
       - run: sleep 5

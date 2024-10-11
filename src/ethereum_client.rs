@@ -1,14 +1,13 @@
 use anyhow::{Context, Result};
 use ethers::prelude::*;
 use hex::FromHex;
-use log::debug;
 #[cfg(test)]
 use rand::prelude::*;
 use std::convert::{From, Into};
 use std::sync::Arc;
 
 use crate::configuration::Configuration;
-use crate::constants::{APP_DATA, ERC20_BALANCE, KIND_SELL};
+use crate::constants::{ERC20_BALANCE, KIND_SELL};
 use crate::encoder::{self, SignatureData};
 use crate::types::{BlockNumber, Swap};
 
@@ -136,7 +135,7 @@ impl EthereumClient {
             sell_amount: swap_request.amount_in,
             buy_amount: U256::MAX,
             valid_to: u32::MAX,
-            app_data: Vec::from_hex(APP_DATA).unwrap().try_into().unwrap(),
+            app_data: swap_request.app_data,
             fee_amount: U256::zero(),
             kind: Vec::from_hex(KIND_SELL).unwrap().try_into().unwrap(),
             partially_fillable: false,
@@ -158,22 +157,28 @@ impl EthereumClient {
             valid_to: u32::MAX as u64,
             fee_amount: U256::zero(),
             order_creator: swap_request.order_creator,
+            app_data: swap_request.app_data,
             price_checker: swap_request.price_checker,
             price_checker_data: &swap_request.price_checker_data,
         });
 
-        debug!(
-            "isValidSignature({:?},{:?})",
-            hex::encode(mock_order_digest),
-            hex::encode(&mock_signature.0)
-        );
-        debug!(
-            "Is valid sig? {:?}",
-            order_contract
+        #[cfg(debug_assertions)]
+        {
+            println!(
+                "isValidSignature({:?},{:?})",
+                hex::encode(mock_order_digest),
+                hex::encode(&mock_signature.0)
+            );
+            let is_valid_signature_output = order_contract
                 .is_valid_signature(mock_order_digest, mock_signature.clone())
                 .call()
-                .await?
-        );
+                .await?;
+            let eip1271_magic_value = [22, 38, 186, 126];
+            println!(
+                "Is valid sig? {:?}",
+                is_valid_signature_output == eip1271_magic_value
+            );
+        }
 
         Ok(order_contract
             .is_valid_signature(mock_order_digest, mock_signature)
@@ -191,6 +196,7 @@ impl From<&SwapRequestedFilter> for Swap {
             from_token: raw_swap_request.from_token,
             to_token: raw_swap_request.to_token,
             amount_in: raw_swap_request.amount_in,
+            app_data: raw_swap_request.app_data,
             price_checker: raw_swap_request.price_checker,
             price_checker_data: raw_swap_request.price_checker_data.clone(),
         }
@@ -206,7 +212,7 @@ mod tests {
         let config = Configuration {
             infura_api_key: None,
             network: "mainnet".to_string(),
-            milkman_address: "0x11C76AD590ABDFFCD980afEC9ad951B160F02797"
+            milkman_address: "0x060373d064d0168931de2ab8dda7410923d06e88"
                 .parse()
                 .unwrap(),
             hash_helper_address: "0x49Fc95c908902Cf48f5F26ed5ADE284de3b55197"
@@ -233,7 +239,7 @@ mod tests {
             .expect("Unable to get chain id");
         assert_eq!(chain_id, 1, "Test must be run on mainnet");
         assert_eq!(
-            latest_block_num, 20920411,
+            latest_block_num, 20927150,
             "Test is designed for a specific mainnet block"
         );
 
@@ -262,12 +268,14 @@ mod tests {
         let receiver = H160([0x42; 20]);
         let price_checker = H160([0x11; 20]);
         let price_checker_data = Bytes::from([0x13, 0x37]);
+        let app_data = [0x21; 32];
         milkman
             .request_swap_exact_tokens_for_tokens(
                 amount_in,
                 weth.address(),
                 dai.address(),
                 receiver,
+                app_data,
                 price_checker,
                 price_checker_data.clone(),
             )
@@ -294,6 +302,7 @@ mod tests {
         assert_eq!(swap.receiver, receiver);
         assert_eq!(swap.price_checker, price_checker);
         assert_eq!(swap.price_checker_data, price_checker_data);
+        assert_eq!(swap.app_data, app_data);
         assert_eq!(swap.order_creator, weth_whale);
     }
 
@@ -321,6 +330,7 @@ mod tests {
         let from_token = Address::random();
         let to_token = Address::random();
         let to = Address::random();
+        let app_data = rand::thread_rng().gen::<[u8; 32]>();
         let price_checker = Address::random();
         let price_checker_data: Bytes = rand::thread_rng().gen::<[u8; 1000]>().into();
 
@@ -331,6 +341,7 @@ mod tests {
             from_token,
             to_token,
             to,
+            app_data,
             price_checker,
             price_checker_data: price_checker_data.clone(),
         };
@@ -342,6 +353,7 @@ mod tests {
         assert_eq!(converted.from_token, from_token);
         assert_eq!(converted.to_token, to_token);
         assert_eq!(converted.receiver, to);
+        assert_eq!(converted.app_data, app_data);
         assert_eq!(converted.price_checker, price_checker);
         assert_eq!(converted.price_checker_data, price_checker_data);
     }

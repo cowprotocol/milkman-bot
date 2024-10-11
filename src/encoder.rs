@@ -2,7 +2,7 @@ use ethers::abi::Token;
 use ethers::prelude::*;
 use hex::FromHex;
 
-use crate::constants::{APP_DATA, ERC20_BALANCE, KIND_SELL};
+use crate::constants::{ERC20_BALANCE, KIND_SELL};
 
 #[derive(Debug)]
 pub struct SignatureData<'a> {
@@ -14,6 +14,7 @@ pub struct SignatureData<'a> {
     pub valid_to: u64,
     pub fee_amount: U256,
     pub order_creator: Address,
+    pub app_data: [u8; 32],
     pub price_checker: Address,
     pub price_checker_data: &'a Bytes,
 }
@@ -28,6 +29,7 @@ pub fn get_eip_1271_signature(
         valid_to,
         fee_amount,
         order_creator,
+        app_data,
         price_checker,
         price_checker_data,
     }: SignatureData<'_>,
@@ -39,7 +41,7 @@ pub fn get_eip_1271_signature(
         Token::Uint(sell_amount_after_fees),
         Token::Uint(buy_amount_after_fees_and_slippage),
         Token::Uint(valid_to.into()),
-        Token::FixedBytes(Vec::from_hex(APP_DATA).unwrap()),
+        Token::FixedBytes(app_data.into()),
         Token::Uint(fee_amount),
         Token::FixedBytes(Vec::from_hex(KIND_SELL).unwrap()),
         Token::Bool(false), // partiallyFillable = false; this is fill or kill order
