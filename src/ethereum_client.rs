@@ -353,6 +353,7 @@ mod tests {
         assert_eq!(converted.from_token, from_token);
         assert_eq!(converted.to_token, to_token);
         assert_eq!(converted.receiver, to);
+        assert_eq!(converted.app_data, app_data);
         assert_eq!(converted.price_checker, price_checker);
         assert_eq!(converted.price_checker_data, price_checker_data);
     }
