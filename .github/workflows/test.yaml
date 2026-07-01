@@ -14,9 +14,9 @@ jobs:
       # Error build on warning (including clippy lints)
       RUSTFLAGS: "-Dwarnings"
     steps:
-      - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+      - uses: Swatinem/rust-cache@81d053bdb0871dcd3f10763c8cc60d0adc41762b # v1
+      - uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d # v1
       - run: anvil --fork-url 'https://eth.merkle.io' --fork-block-number 20927150 &
       - run: cargo clippy
       # node should be up before running tests
